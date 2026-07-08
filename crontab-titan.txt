@@ -1,0 +1,38 @@
+# TÂCHES CRON — PROJET TITAN (bourse-titan)
+# Relevé du 08/07/2026 depuis le panneau alwaysdata (Environnement > Tâches planifiées)
+# À recréer à l'identique en cas de réinstallation (adapter le domaine si besoin)
+
+# 1. Collecte des données de marché (OHLCV + macro + sentiment)
+#    Fréquence : toutes les 5 minutes
+wget -q -O /dev/null "https://visiondufutur.com/bourse-titan/fetch_data.php?force=1"
+
+# 2. Réentraînement des poids Oracle/Echo (PHP, table titan_cortex)
+#    Fréquence : tous les jours à 00:00
+wget -q -O /dev/null "https://visiondufutur.com/bourse-titan/train_ai.php"
+
+# 3. [DOUBLON — facultatif, à ne pas recréer]
+#    Même script que la tâche 1, toutes les heures, en http non sécurisé.
+#    Redondant : la tâche 1 couvre déjà le besoin.
+# curl -s "http://visiondufutur.com/bourse-titan/fetch_data.php?force=1"
+
+# 4. Réentraînement du modèle XGBoost (Cortex Python)
+#    Fréquence : tous les jours à 03:00
+#    ⚠️ Dépend du dossier /home/othman/api_python/ — À ARCHIVER SÉPARÉMENT
+#    (script train_xgboost.py + app web servant /predict/ et /generate_brief
+#     + modèles entraînés + requirements.txt)
+python /home/othman/api_python/train_xgboost.py
+
+# 5. Génération des briefings LLM Cerebras + push Telegram
+#    Fréquence : tous les jours à 05:00
+#    ⚠️ Le script contient une URL en dur vers api_asset.php — à adapter si le domaine change
+curl -s https://visiondufutur.com/bourse-titan/cron_cerebras.php > /dev/null
+
+# ---------------------------------------------------------------
+# KIT D'ARCHIVAGE COMPLET (4 pièces) :
+#   1. bourse-titan-production.zip  (code PHP)
+#   2. dump .sql                    (structure + données de la base othman_titan)
+#   3. ce fichier                   (tâches cron)
+#   4. dossier /home/othman/api_python/  (API Python + modèles, via SFTP)
+# Rappel : régénérer les clés Cerebras/Telegram et le mot de passe MySQL
+# avant toute remise en ligne.
+# ---------------------------------------------------------------
